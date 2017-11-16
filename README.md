@@ -7,8 +7,8 @@
 
 支持平台
 
-- IOS
-- Android
+- IOS (>=8.0)
+- Android (>=4.4)
 
 ## 用法
 
@@ -25,6 +25,8 @@
 
 ### 调用
 
+参数
+
 ```
 {
     imageList: imageList,
@@ -36,7 +38,7 @@ imageList： 支持本地 与 网络图片地址
 
 albumName：自定义相册名称
 
-Example:
+示例:
 
 ```
 var imageList = [
@@ -82,8 +84,30 @@ function (data) {
 
 ```
 function (error) {
-    // error : {code: 100, message: 'xxxx'}
+    // error : {code: 120, message: 'xxxx'}
 }
 ```
+
+## IOS
+
+鉴于IOS8以上市场已达到了95%以上，最低版本8.0 ，使用了8.0之后新增的 Photos.framework。
+
+当用户手动到设置里关闭相册访问权限后，需要手动打开相册开关；
+
+```
+- (void)openSetting {
+    NSURL *url = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+    if ([[UIApplication sharedApplication] canOpenURL:url]) {
+        [[UIApplication sharedApplication] openURL:url];
+    }
+}
+```
+
+## Android
+
+
+
+
+
 
 
