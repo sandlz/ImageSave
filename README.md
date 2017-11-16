@@ -91,7 +91,7 @@ function (error) {
 ## IOS
 
 鉴于IOS8以上市场已达到了95%以上，最低版本8.0 ，使用了8.0之后新增的 Photos.framework。
-
+[官方数据](https://developer.apple.com/support/app-store/)
 当用户手动到设置里关闭相册访问权限后，需要手动打开相册开关；
 
 ```
@@ -104,6 +104,11 @@ function (error) {
 ```
 
 ## Android
+
+## TODO
+
+* [ ] Android - 适配6.0
+* [ ] Android - 支持本地文件
 
 
 
