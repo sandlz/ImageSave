@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="cordova-plugin-imagesave" version="0.0.1" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+    <name>ImageSave</name>
+    <js-module name="ImageSave" src="www/ImageSave.js">
+        <clobbers target="cordova.plugins.ImageSave" />
+    </js-module>
+
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="ImageSave">
+                <param name="ios-package" value="ImageSave" />
+            </feature>
+        </config-file>
+
+        <header-file src="src/ios/ImageSave.h" />
+        <source-file src="src/ios/ImageSave.m" />
+        <framework src="Photos.framework"/>
+
+    </platform>
+
+    <platform name="android">
+        <source-file src="src/android/ImageSave.java" target-dir="src/com/handsmap/imagesave"/>
+
+        <config-file parent="/*" target="AndroidManifest.xml">
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+            <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.CAMERA" />
+            <uses-permission android:name="android.permission.VIBRATE" />
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+        </config-file>
+
+        <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="ImageSave">
+                <param name="android-package" value="com.handsmap.imagesave.ImageSave"/>
+            </feature>
+        </config-file>
+    </platform>
+
+</plugin>
