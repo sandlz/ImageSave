@@ -2,16 +2,17 @@
 
 保存照片到相册
 
+支持平台
+
+- IOS (>=8.0)
+- Android (>=4.4)
+
 ## 特点
 
 - 支持自定义相册
 - 支持网络、本地图片
 - Android 重复文件处理
 
-支持平台
-
-- IOS (>=8.0)
-- Android (>=4.4)
 
 ## 用法
 
@@ -32,24 +33,24 @@
 
 ```
 {
+    // 图片数据
     imageList: imageList,
+    // 自定义相册名称
     albumName: albumName,
+    // 缓存目录
     cacheDirName: cacheDirName
-
 }
 ```
-
-imageList： 支持本地 与 网络图片地址
-
-albumName：自定义相册名称
-
-cacheDirName:： 缓存目录
 
 示例:
 
 ```
 var imageList = [
-{fileFullName: 'xxx.png', cacheFileName:'112ssq.png', imageUrl: 'http://xxx.png'}
+    {
+        fileFullName: 'xxx.png',
+        cacheFileName:'112ssq.png',
+        imageUrl: 'http://xxx.png'
+    }
 ];
 var cacheDirName = 'cacheDir';
 var albumName = 'Custom Album';
@@ -64,13 +65,9 @@ if (window.plugins && window.plugins.ImageSave) {
         albumName: albumName,
         cacheDirName: cacheDirName
         }), function (data) {
-            PublicUtils.showToast("下载成功，请到相册中查看", function () {
-
-            });
+            // 保存成功，请到相册中查看
         }, function (error) {
-            PublicUtils.showToast("下载失败...", function () {
-
-            });
+            // 保存失败
         });
 } else {
     console.log("未安装 相册插件");
@@ -78,6 +75,8 @@ if (window.plugins && window.plugins.ImageSave) {
 ```
 
 ## 回调
+
+返回码请参考上面的表格
 
 成功
 
@@ -113,7 +112,7 @@ function (error) {
 
 ### 缓存目录
 
-项目使用了 [imgcachejs](https://github.com/chrisben/imgcache.js) [ion-image-cache](https://github.com/vitaliy-bobrov/ionic-img-cache),请根据说明文档进行配置
+项目使用了 [imgcachejs](https://github.com/chrisben/imgcache.js) [ion-image-cache](https://github.com/vitaliy-bobrov/ionic-img-cache),具体请根据说明文档进行配置
 
 ```
 /application dir/Library/files/cacheDir/
