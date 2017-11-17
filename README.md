@@ -2,6 +2,8 @@
 
 保存照片到相册
 
+## 特点
+
 - 支持自定义相册
 - 支持网络、本地图片
 - Android 重复文件处理
@@ -47,10 +49,9 @@ cacheDirName:： 缓存目录
 
 ```
 var imageList = [
-'http://www.xxx.com/xxx/xxx.png',
-'file://xxxx/xxx.jpg'
+{fileFullName: 'xxx.png', cacheFileName:'112ssq.png', imageUrl: 'http://xxx.png'}
 ];
-
+var cacheDirName = 'cacheDir';
 var albumName = 'Custom Album';
 
 ```
@@ -60,7 +61,9 @@ var albumName = 'Custom Album';
 if (window.plugins && window.plugins.ImageSave) {
     window.plugins.ImageSave.saveToAlbum(JSON.stringify({
         imageList: imageList,
-        albumName: albumName}), function (data) {
+        albumName: albumName,
+        cacheDirName: cacheDirName
+        }), function (data) {
             PublicUtils.showToast("下载成功，请到相册中查看", function () {
 
             });
@@ -122,7 +125,7 @@ function (error) {
 ### 缓存目录
 
 ```
-/cacheDir/
+/External Path/cacheDir/
 ```
 
 ## TODO
@@ -131,7 +134,9 @@ function (error) {
 * [ ] IOS - 相册重复处理
 
 
+## 联系
 
+如在使用过程中遇到问题，请提交[issues](https://github.com/SandLZ/ImageSave/issues)或邮件978949438@qq.com
 
 
 
