@@ -3,7 +3,8 @@
 保存照片到相册
 
 - 支持自定义相册
-- 支持权限
+- 支持网络、本地图片
+- Android 重复文件处理
 
 支持平台
 
@@ -30,13 +31,17 @@
 ```
 {
     imageList: imageList,
-    albumName: albumName
+    albumName: albumName,
+    cacheDirName: cacheDirName
+
 }
 ```
 
 imageList： 支持本地 与 网络图片地址
 
 albumName：自定义相册名称
+
+cacheDirName:： 缓存目录
 
 示例:
 
@@ -103,12 +108,28 @@ function (error) {
 }
 ```
 
+### 缓存目录
+
+项目使用了 [imgcachejs](https://github.com/chrisben/imgcache.js) [ion-image-cache](https://github.com/vitaliy-bobrov/ionic-img-cache),请根据说明文档进行配置
+
+```
+/application dir/Library/files/cacheDir/
+```
+
+
 ## Android
+
+### 缓存目录
+
+```
+/cacheDir/
+```
 
 ## TODO
 
 * [ ] Android - 适配6.0
-* [ ] Android - 支持本地文件
+* [ ] IOS - 相册重复处理
+
 
 
 

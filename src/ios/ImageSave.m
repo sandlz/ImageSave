@@ -13,10 +13,18 @@
 @interface ImageSave ()
 @property(nonatomic, strong)NSArray *imageList;
 @property(nonatomic, strong)NSString *albumName;
+@property(nonatomic, strong)NSString *cacheDirName;
 @property(nonatomic, strong)NSMutableArray *errorImageList;
 @property(nonatomic, strong)NSMutableDictionary *callbackDic;
 @property(nonatomic)NSUInteger successCount;
 @property(nonatomic)NSUInteger errorCount;
+@property(nonatomic)BOOL hasPermission;
+
+@property(nonatomic, strong)NSFileManager *fileManager;
+@property(nonatomic, strong)NSString *cacheDirPath;
+
+@property(nonatomic, strong)PHAssetCollection *createdCollection;
+
 @property (nonatomic ,strong)CDVInvokedUrlCommand  *command;
 
 @end
@@ -24,7 +32,6 @@
 @implementation ImageSave
 
 - (void)saveToAlbum:(CDVInvokedUrlCommand*)command {
-    // 解析数据
     self.command = command;
     NSString* jsonString = [command.arguments objectAtIndex:0];
     NSData *jsonData = [jsonString dataUsingEncoding:NSUTF8StringEncoding];
@@ -33,65 +40,70 @@
                                                         options:NSJSONReadingMutableContainers
                                                           error:&err];
     NSArray *imageList    = [dic objectForKey:@"imageList"];
-    NSString *albumName     = [dic objectForKey:@"albumName"];
+    self.imageList = [NSArray arrayWithArray:imageList];
+    self.albumName     = [dic objectForKey:@"albumName"];
+    self.cacheDirName = [dic objectForKey:@"cacheDirName"];
+    self.hasPermission = NO;
     [self.commandDelegate runInBackground:^{
-        [self save:imageList albumName:albumName];
+        [self initData];
+        [self checkPhotoPermissions];
     }];
     
 }
 
-
-- (void)save:(NSArray *) imageUrls albumName:(NSString*)albumName{
-    self.imageList = [NSArray arrayWithArray:imageUrls];
-    self.albumName = albumName;
-    [self initData];
-    [self checkPhotoPermissions];
-}
-
-#pragma mark - 初始化数据
+#pragma mark - Init Data
 
 - (void)initData {
     self.successCount = 0;
     self.errorCount = 0;
     self.errorImageList = [[NSMutableArray alloc] init];
     self.callbackDic = [[NSMutableDictionary alloc] init];
+    self.fileManager = [NSFileManager defaultManager];
+    NSString *libDir = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) lastObject];
+    // get cached file dir
+    self.cacheDirPath = [NSString stringWithFormat:@"%@/files/%@/",libDir,self.cacheDirName];
+    self.createdCollection = [self createCustomAssetCollection:self.albumName];
 }
 
-#pragma mark - 成功(通知js)
+#pragma mark - Success Callback
 
 - (void)callbackSuccess: (NSMutableDictionary *) dic {
     CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dic];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:self.command.callbackId];
 }
 
-#pragma mark - 失败(通知js)
+#pragma mark - Error Callback
 
 - (void)callbackError: (NSMutableDictionary *) dic {
     CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dic];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:self.command.callbackId];
 }
 
-#pragma mark - 保存图片
+#pragma mark - Save Image
 
 - (void)handleSavePhotoToAlbum {
     NSUInteger imageLength = self.imageList.count;
     for (int i =0 ; i< imageLength; i++) {
-        NSString *imageUrl = [self.imageList objectAtIndex:i];
+        NSDictionary *dic = [self.imageList objectAtIndex:i];
+        NSString *imageUrl = [dic objectForKey:@"imageUrl"];
+        NSString *cacheFileName = [dic objectForKey:@"cacheFileName"];
+        
+        NSString *cacheFilePath = [self getLocalFileFullPathByFileName:cacheFileName];
+        // check cacheFile is exist
+        BOOL isExist = [self checkFilesExist:cacheFilePath];
         NSData *data = nil;
-        if ([imageUrl hasPrefix:@"file://"]) {
-            // 本地
-            data = [NSData dataWithContentsOfFile:[NSURL URLWithString:imageUrl]];
+        if (isExist) {
+            // Local
+            data = [self getImageDataFromLocal: cacheFilePath];
         } else {
-            // 网络
+            // Network
             data = [NSData dataWithContentsOfURL:[NSURL URLWithString:imageUrl]];
         }
         [self saveImage:data imageUrl:imageUrl];
     }
 }
 
-
-
-#pragma mark - 保存网络图片
+#pragma mark - Save Image with NSData
 
 - (void)saveImage:(NSData *)data imageUrl:(NSString *)url {
     if (data == nil) {
@@ -99,15 +111,15 @@
     }
     
     UIImage *uiImage = [[UIImage alloc] initWithData:data];
-    // 获取自定义相册
-    PHAssetCollection *createdCollection = [self createCustomAssetCollection:self.albumName];
-    if (createdCollection == nil) {
-        NSLog(@"创建相册失败");
+    if (self.createdCollection == nil) {
+        NSLog(@"create album faied");
+        return;
     }
-    // 将图片保存到自定义相册
+    
+    // save image to custom album
     
     [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
-        PHAssetCollectionChangeRequest *request = [PHAssetCollectionChangeRequest changeRequestForAssetCollection:createdCollection];
+        PHAssetCollectionChangeRequest *request = [PHAssetCollectionChangeRequest changeRequestForAssetCollection:self.createdCollection];
         PHAssetChangeRequest *assetChangeRequest = [PHAssetChangeRequest creationRequestForAssetFromImage:uiImage];
         PHObjectPlaceholder *placeholder = [assetChangeRequest placeholderForCreatedAsset];
         [request addAssets:@[placeholder]];
@@ -124,60 +136,63 @@
     
 }
 
-#pragma mark - 保存网络图片
+#pragma mark - Handle Save State
 
 - (void)handleSaveStatus {
     if (self.successCount == self.imageList.count) {
-        // 全部成功
+        // all success
         [self.callbackDic setObject:@"全部成功" forKey:@"message"];
         [self.callbackDic setObject:@(100) forKey:@"code"];
         [self callbackSuccess:self.callbackDic];
         
     } else if (self.errorCount > 0 && self.successCount > 0 && (self.successCount + self.errorCount) == self.imageList.count) {
-        // 部分成功,部分失败
+        // part success, part error
         [self.callbackDic setObject:@"部分成功,部分失败" forKey:@"message"];
         [self.callbackDic setObject:@(101) forKey:@"code"];
         [self.callbackDic setObject:self.errorImageList forKey:@"errorList"];
         [self callbackSuccess:self.callbackDic];
         
     } else if (self.errorCount == self.imageList.count) {
-        // 全部失败
+        // all error
         [self.callbackDic setObject:@"全部失败" forKey:@"message"];
         [self.callbackDic setObject:@(110) forKey:@"code"];
         [self callbackError:self.callbackDic];
     }
 }
 
-#pragma mark - 检查相册权限
+#pragma mark - Check Photo Permission
 
 - (void)checkPhotoPermissions {
     PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatus];
     if (status == PHAuthorizationStatusNotDetermined) {
-        // 不确定 ,block中的内容会等到授权完成再调用
+        // not sure ,block's content will called when authored
         [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
-            // 授权完成就会调用
             if (status == PHAuthorizationStatusAuthorized) {
-                // 调用存储图片的方法
+                // call save method
+                self.hasPermission = YES;
                 [self handleSavePhotoToAlbum];
             }
         }];
         
-        // 允许访问
+        // allow
     } else if (status == PHAuthorizationStatusAuthorized) {
-        //调用存储图片的方法
+        // call save method
+        self.hasPermission = YES;
         [self handleSavePhotoToAlbum];
     } else {
-        // 拒绝 打开设置页让用户开启照片（此处也可使用alert提示框 让用户主动选择是否打开设置页面）
+        // Denied or Restricted
+        // open setting view
         dispatch_async(dispatch_get_main_queue(), ^{
             [self performSelector:@selector(openSetting) withObject:nil afterDelay:3.0];
         });
-        [self.callbackDic setObject:@"相册权限" forKey:@"message"];
+        self.hasPermission = NO;
+        [self.callbackDic setObject:@"无访问相册权限" forKey:@"message"];
         [self.callbackDic setObject:@(120) forKey:@"code"];
         [self callbackError:self.callbackDic];
     }
 }
 
-#pragma mark - 打开设置页面
+#pragma mark - Open Setting View
 
 - (void)openSetting {
     NSURL *url = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
@@ -187,64 +202,105 @@
 }
 
 
-#pragma mark - 使用 photo 框架创建自定义名称的相册 并获取自定义相册
+#pragma mark -  Use Photo.framework create album
 
 - (PHAssetCollection *)createCustomAssetCollection: (NSString *)albumName
 {
-    // 获取 app 名称
+    // get app name
     if (nil == albumName) {
         albumName = [NSBundle mainBundle].infoDictionary[(NSString *)kCFBundleNameKey];
     }
     NSError *error = nil;
     
-    // 查找 app 中是否有该相册 如果已经有了 就不再创建
+    // check app exist the album. if exist, do nothing
     /**
-     *     参数一 枚举：
-     *     PHAssetCollectionTypeAlbum      = 1, 用户自定义相册
-     *     PHAssetCollectionTypeSmartAlbum = 2, 系统相册
-     *     PHAssetCollectionTypeMoment     = 3, 按时间排序的相册
+     *     Param one -  enum：
+     *     PHAssetCollectionTypeAlbum      = 1, custom album
+     *     PHAssetCollectionTypeSmartAlbum = 2, system album
+     *     PHAssetCollectionTypeMoment     = 3, date ordered album
      *
-     *     参数二 枚举：PHAssetCollectionSubtype
-     *     参数二的枚举有非常多，但是可以根据识别单词来找出我们想要的。
-     *     比如：PHAssetCollectionTypeSmartAlbum 系统相册 PHAssetCollectionSubtypeSmartAlbumUserLibrary 用户相册 就能获取到相机胶卷
-     *     PHAssetCollectionSubtypeAlbumRegular 常规相册
+     *     Param two - enum：PHAssetCollectionSubtype
+     
+     *     example：PHAssetCollectionTypeSmartAlbum system album PHAssetCollectionSubtypeSmartAlbumUserLibrary user album
+     *     PHAssetCollectionSubtypeAlbumRegular normal album
      */
     PHFetchResult<PHAssetCollection *> *result = [PHAssetCollection fetchAssetCollectionsWithType:(PHAssetCollectionTypeAlbum)
                                                                                           subtype:(PHAssetCollectionSubtypeAlbumRegular)
                                                                                           options:nil];
     for (PHAssetCollection *collection in result) {
-        if ([collection.localizedTitle isEqualToString:albumName]) { // 说明 app 中存在该相册
+        if ([collection.localizedTitle isEqualToString:albumName]) {
+            // exist the album
             return collection;
         }
     }
-    
-    /** 来到这里说明相册不存在 需要创建相册 **/
+    // need creat album
     __block NSString *createdCustomAssetCollectionIdentifier = nil;
     
-    /**
-     * 注意：这个方法只是告诉 photos 我要创建一个相册，并没有真的创建
-     *      必须等到 performChangesAndWait block 执行完毕后才会
-     *      真的创建相册。
-     */
     [[PHPhotoLibrary sharedPhotoLibrary] performChangesAndWait:^{
         PHAssetCollectionChangeRequest *collectionChangeRequest = [PHAssetCollectionChangeRequest creationRequestForAssetCollectionWithTitle:albumName];
-        /**
-         * collectionChangeRequest 即使我们告诉 photos 要创建相册，但是此时还没有
-         * 创建相册，因此现在我们并不能拿到所创建的相册，我们的需求是：将图片保存到
-         * 自定义的相册中，因此我们需要拿到自己创建的相册，从头文件可以看出，collectionChangeRequest
-         * 中有一个占位相册，placeholderForCreatedAssetCollection ，这个占位相册
-         * 虽然不是我们所创建的，但是其 identifier 和我们所创建的自定义相册的 identifier
-         * 是相同的。所以想要拿到我们自定义的相册，必须保存这个 identifier，等 photos app
-         * 创建完成后通过 identifier 来拿到我们自定义的相册
-         */
         createdCustomAssetCollectionIdentifier = collectionChangeRequest.placeholderForCreatedAssetCollection.localIdentifier;
     } error:&error];
-    
-    // 这里 block 结束了，因此相册也创建完毕了
+    // block end. album created
     if (error) {
-        NSLog(@"创建相册失败");
+        NSLog(@"create album failed");
     }
     return [PHAssetCollection fetchAssetCollectionsWithLocalIdentifiers:@[createdCustomAssetCollectionIdentifier] options:nil].firstObject;
+}
+
+# pragma mark - Get custom album list
+
+- (void)getAllImageDataFromCustomAlbum:(PHAssetCollection *)collection {
+    // get all PHAsset
+    NSMutableArray *array = [NSMutableArray array];
+    PHFetchResult<PHAsset *> *assets = [PHAsset fetchAssetsInAssetCollection:collection options:nil];
+    if (assets.count == 0) {
+        //        [self handleSavePhotoToAlbumWithAlbumDataArray:[NSArray array]];
+        return;
+    }
+    PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
+    options.synchronous = NO;
+    for (PHAsset *asset in assets) {
+        @autoreleasepool {
+            // get image data from PHAsset
+            [[PHImageManager defaultManager] requestImageDataForAsset:asset options:options
+                                                        resultHandler:^(NSData *imageData,NSString *dataUTI,UIImageOrientation orientation, NSDictionary *info) {
+                                                            [array addObject:imageData];
+                                                            //                                                            if (array.count == assets.count) {
+                                                            //                                                                [self handleSavePhotoToAlbumWithAlbumDataArray:array];
+                                                            //
+                                                            //                                                            }
+                                                        }];
+        }
+    }
+}
+
+# pragma mark - Check Library Dir is exist file
+
+- (BOOL)checkFilesExist:(NSString *)localFilePath {
+    return [self.fileManager fileExistsAtPath:localFilePath];
+}
+
+# pragma mark - Get file full path
+
+- (NSString *)getLocalFileFullPathByFileName:(NSString *)fileName {
+    return [NSString stringWithFormat:@"%@%@",self.cacheDirPath,fileName];
+}
+
+# pragma mark - Get data from local file path
+
+- (NSData*)getImageDataFromLocal:(NSString *)localFilePath {
+    if (nil != localFilePath && [self checkFilesExist:localFilePath]) {
+        return [self.fileManager contentsAtPath:localFilePath];
+    }
+    return nil;
+}
+
+# pragma mark - Get File List From Cache Dir
+
+- (NSArray *)getFileListFromCacheDir {
+    // list the cached file
+    NSArray *dirContents = [self.fileManager contentsOfDirectoryAtPath:self.cacheDirPath error:nil];
+    return dirContents;
 }
 
 @end

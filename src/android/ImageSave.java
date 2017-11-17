@@ -12,6 +12,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,6 +23,8 @@ import java.util.ArrayList;
 public class ImageSave extends CordovaPlugin {
 
     private String ALBUM_PATH = "";
+    private String cacheDirName = "Picture";
+    private String albumName = "";
 
     private final static String TAG = "ImageSave";
 
@@ -42,14 +45,15 @@ public class ImageSave extends CordovaPlugin {
             String obj = (String) args.get(0);
             JSONObject jsonObj = new JSONObject(obj);
             JSONArray iamgeJsonArr = jsonObj.getJSONArray("imageList");
-            String albumName = jsonObj.getString("albumName");
-            initData(iamgeJsonArr, albumName);
+            albumName = jsonObj.getString("albumName");
+            cacheDirName = jsonObj.getString("cacheDirName");
+            initData(iamgeJsonArr);
             return true;
         }
         return false;
     }
 
-    private void initData(JSONArray iamgeJsonArr, String albumName) {
+    private void initData(JSONArray iamgeJsonArr) {
         if (null == errorImageList) {
             errorImageList = new ArrayList<>();
         } else {
@@ -62,19 +66,33 @@ public class ImageSave extends CordovaPlugin {
         }
         successCount = 0;
         errorCount = 0;
-        for (int i = 0; i < iamgeJsonArr.length(); i++) {
-            try {
-                imageList.add(iamgeJsonArr.getString(i));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
         if (null == albumName) {
             albumName = "默认相册/";
         } else {
             albumName += "/";
         }
         ALBUM_PATH = Environment.getExternalStorageDirectory() + "/" + albumName;
+        checkDir(ALBUM_PATH);
+        for (int i = 0; i < iamgeJsonArr.length(); i++) {
+            try {
+                JSONObject itemJson = iamgeJsonArr.getJSONObject(i);
+                String fileFullPath = getLocalFileFullPath(itemJson.getString("cacheFileName"));
+                // check album dir exist the file
+                String imageFullPath = ALBUM_PATH + itemJson.getString("fileFullName");
+                if (!checkFileExists(imageFullPath)) {
+                    // album dir doesn't exist copy file
+                    if (!checkFileExists(fileFullPath)) {
+                        // check local file exist. if not, download it
+                        imageList.add(itemJson.getString("imageUrl"));
+                    } else {
+                        // exist, check album dir exist the file
+                        copyFile(fileFullPath, imageFullPath);
+                    }
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
         handleData();
     }
 
@@ -161,6 +179,13 @@ public class ImageSave extends CordovaPlugin {
             if (!dirFile.exists()) {
                 dirFile.mkdir();
             }
+            File file = new File(ALBUM_PATH + filename);
+            if (!file.exists()) {
+                file.createNewFile();
+            } else {
+                // 文件已存在 不处理
+                return;
+            }
             InputStream is = getImageStreamFromNet(filePath);
             if (null == is) {
                 // network image is broken
@@ -170,10 +195,7 @@ public class ImageSave extends CordovaPlugin {
             }
             FileOutputStream fos = null;
             // check file
-            File file = new File(ALBUM_PATH + filename);
-            if (!file.exists()) {
-                file.createNewFile();
-            }
+
             // open stream
             fos = new FileOutputStream(file);
             // write stream
@@ -269,6 +291,73 @@ public class ImageSave extends CordovaPlugin {
             jsonArray.put(arrayList.get(i));
         }
         return jsonArray;
+    }
+
+    /**
+     * Get local file fullPath
+     * @param fileName
+     * @return
+     */
+    private String getLocalFileFullPath(String fileName) {
+        return  Environment.getExternalStorageDirectory() + "/" + cacheDirName + "/" + fileName;
+    }
+
+    /**
+     * Check local file exists
+     * @param filePath
+     * @return
+     */
+    private boolean checkFileExists(String filePath) {
+        if (null == filePath) {
+            return false;
+        }
+        File file = new File(filePath);
+        if (file.exists()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Copy File and rename
+     * @param sourceFilePath source file full path
+     * @param targetFilePath target file full path
+     */
+    private void copyFile(String sourceFilePath, String targetFilePath) {
+        if (null == sourceFilePath || null == targetFilePath) {
+            return;
+        }
+        try {
+            int bytesum = 0;
+            int byteread = 0;
+            File oldfile = new File(sourceFilePath);
+            if (oldfile.exists()) { //文件存在时
+                InputStream inStream = new FileInputStream(sourceFilePath); //读入原文件
+                FileOutputStream fs = new FileOutputStream(targetFilePath);
+                byte[] buffer = new byte[1444];
+                int length;
+                while ( (byteread = inStream.read(buffer)) != -1) {
+                    bytesum += byteread; //字节数 文件大小
+                    fs.write(buffer, 0, byteread);
+                }
+                inStream.close();
+                fs.close();
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * check dir exist. if not, create it
+     * @param dirPath
+     */
+    private void checkDir(String dirPath) {
+        File dir = new File(dirPath);
+        if (!dir.exists()) {
+            dir.mkdir();
+        }
     }
 
 }
