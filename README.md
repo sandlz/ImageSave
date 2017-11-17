@@ -1,54 +1,53 @@
-# cordova-plugin-imagesave
+# ImageSave
 
-保存照片到相册
+Save images to album for cordova plugin.
+中文版请参考[使用说明](https://github.com/SandLZ/ImageSave/blob/master/README_CN.md)
 
-支持平台
+Support platforms
 
 - IOS (>=8.0)
 - Android (>=4.4)
 
-## 特点
+## Features
 
-- 支持自定义相册
-- 支持网络、本地图片
-- Android 重复文件处理
+- Custom album
+- Online image、Local image
 
+## Usage
 
-## 用法
-
-### 返回码定义
+### Code
 
 | Code | State | Message |
 | --- | --- | --- |
-| 100 | Success | 全部成功 |
-| 101 | Success | 部分成功 && 部分失败 |
-| 110 | Error | 全部失败 |
-| 120 | Error | 权限错误(无法保存到相册) |
-| 130 | Error | 其他异常 |
+| 100 | Success | All success |
+| 101 | Success | Part success && Part failed |
+| 110 | Error | All failed |
+| 120 | Error | Permission denied |
+| 130 | Error | Other exception(Android) |
 
 
-### 调用
+### Call
 
-参数
+Params
 
 ```
 {
-    // 图片数据
+    // image data
     imageList: imageList,
-    // 自定义相册名称
+    // custom album name
     albumName: albumName,
-    // 缓存目录
+    // cache dir name
     cacheDirName: cacheDirName
 }
 ```
 
-示例:
+Example:
 
 ```
 var imageList = [
     {
         fileFullName: 'xxx.png',
-        cacheFileName:'112ssq.png',
+        cacheFileName:'ab112ssq.png',
         imageUrl: 'http://xxx.png'
     }
 ];
@@ -65,20 +64,19 @@ if (window.plugins && window.plugins.ImageSave) {
         albumName: albumName,
         cacheDirName: cacheDirName
         }), function (data) {
-            // 保存成功，请到相册中查看
+            // Success
         }, function (error) {
-            // 保存失败
+            // Error
         });
 } else {
-    console.log("未安装 相册插件");
+    console.log("Please intall the plugin.");
 }
 ```
 
-## 回调
+## Callback
 
-返回码请参考上面的表格
 
-成功
+Success
 
 ```
 function (data) {
@@ -87,7 +85,7 @@ function (data) {
 ```
 
 
-失败
+Error
 
 ```
 function (error) {
@@ -97,9 +95,10 @@ function (error) {
 
 ## IOS
 
-鉴于IOS8以上市场已达到了95%以上，最低版本8.0 ，使用了8.0之后新增的 Photos.framework。
-[官方数据](https://developer.apple.com/support/app-store/)
-当用户手动到设置里关闭相册访问权限后，需要手动打开相册开关；
+In view of the above IOS8 market has reached more than 95%, the lowest version of 8, the use of 8 after the new Photos.framework.
+[Offical data](https://developer.apple.com/support/app-store/)
+
+When the user manually sets the settings to close the album access rights, you need to manually open the album switch
 
 ```
 - (void)openSetting {
@@ -110,9 +109,9 @@ function (error) {
 }
 ```
 
-### 缓存目录
+### CacheDir
 
-项目使用了 [imgcachejs](https://github.com/chrisben/imgcache.js) [ion-image-cache](https://github.com/vitaliy-bobrov/ionic-img-cache),具体请根据说明文档进行配置
+Our project using [imgcachejs](https://github.com/chrisben/imgcache.js) [ion-image-cache](https://github.com/vitaliy-bobrov/ionic-img-cache),Please check it's document.
 
 ```
 /application dir/Library/files/cacheDir/
@@ -121,7 +120,7 @@ function (error) {
 
 ## Android
 
-### 缓存目录
+### CacheDir
 
 ```
 /External Path/cacheDir/
@@ -129,13 +128,12 @@ function (error) {
 
 ## TODO
 
-* [ ] Android - 适配6.0
-* [ ] IOS - 相册重复处理
+* [ ] Android - Fit 6.0
+* [ ] IOS - Handle repeat image
 
+## Contact
 
-## 联系
-
-如在使用过程中遇到问题，请提交[issues](https://github.com/SandLZ/ImageSave/issues)或邮件978949438@qq.com
+Commit[issues](https://github.com/SandLZ/ImageSave/issues) or Mail 978949438@qq.com
 
 
 
