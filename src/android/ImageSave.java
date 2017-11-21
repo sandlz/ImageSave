@@ -343,6 +343,8 @@ public class ImageSave extends CordovaPlugin {
                 inStream.close();
                 fs.close();
             }
+            File targetFile = new File(targetFilePath);
+            scanPhotoLibrary(targetFile);
         }
         catch (Exception e) {
             e.printStackTrace();
