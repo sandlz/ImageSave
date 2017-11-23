@@ -126,6 +126,23 @@ Our project using [imgcachejs](https://github.com/chrisben/imgcache.js) [ion-ima
 /External Path/cacheDir/
 ```
 
+## Issues
+
+### IOS
+
+If image url contains chinese words, FileTransfer may throw an error,
+ ```
+ File Transfer Error: Invalid server URL 'xxxxxx'
+ ```
+How to fix it?
+
+```
+Before 'NSURL* sourceURL = [NSURL URLWithString:source];'
+Add below line
+(ios 7 later)
+source = [source stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+```
+
 ## TODO
 
 * [ ] Android - Fit 6.0
