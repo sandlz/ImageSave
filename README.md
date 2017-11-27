@@ -1,6 +1,6 @@
 # ImageSave
 
-Save images to album for cordova plugin.
+Save images to album for cordova plugin.It's best using with ion-img-cache.
 中文版请参考[使用说明](https://github.com/SandLZ/ImageSave/blob/master/README_CN.md)
 
 Support platforms
