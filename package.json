@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-image-save",
-  "version": "1.0.0",
+  "version": "0.0.2",
   "description": "This is a plugin to save image file to gallery.It's best using with ion-img-cache.",
   "main": "index.js",
   "scripts": {
